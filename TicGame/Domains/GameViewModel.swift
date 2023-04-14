@@ -124,6 +124,7 @@ final class GameViewModel: ObservableObject {
             .assign(to: &$player2Score)
         
         $onlineGame
+            .drop(while: { $0 == nil } )
             .sink { updatedGame in
                 self.syncOnlineWithLocal(onlineGame: updatedGame)
             }
@@ -132,8 +133,7 @@ final class GameViewModel: ObservableObject {
     
     private func syncOnlineWithLocal(onlineGame: Game?) {
         guard let game = onlineGame else {
-            //if its nil exit game
-            print("exit the game")
+            showAlert(for: .quit)
             return
         }
 
@@ -149,32 +149,35 @@ final class GameViewModel: ObservableObject {
         }
 
         //set active player
-        activePlayer = (localPlayerId == game.player1Id) ? .player1 : .player2
-        print("Active player is \(activePlayer)")
+//        activePlayer = (localPlayerId == game.player1Id) ? .player1 : .player2
         
         //set disable
         isGameBoardDisabled = game.player2Id == "" ? true : localPlayerId != game.activePlayerId
         print("GameBoard is disabled  \(isGameBoardDisabled)")
 
+
+        if localPlayerId == game.player1Id {
+            //we are P1
+            if localPlayerId == game.activePlayerId {
+                //its our turn
+                self.activePlayer = .player1
+//                print("1 is active")
+            }
+        } else {
+            //we are P2
+            if localPlayerId == game.activePlayerId {
+                //its our turn
+                self.activePlayer = .player2
+//                print("2 is active")
+            }
+
+        }
+        
+        print("Active player is \(activePlayer)")
+
         //set the notification
         gameNotification = game.player2Id == "" ? "Waiting for player to join" : "It's \(activePlayer.name)'s move"
 
-//        if localPlayerId == game.player1Id {
-//            //we are P1
-//            if localPlayerId == game.activePlayerId {
-//                //its our turn
-//                self.activePlayer = .player1
-//                print("1 is active")
-//            }
-//        } else {
-//            //we are P2
-//            if localPlayerId == game.activePlayerId {
-//                //its our turn
-//                self.activePlayer = .player2
-//                print("2 is active")
-//            }
-//
-//        }
     }
     
 //    private func updateGameStatus() {
@@ -231,9 +234,17 @@ final class GameViewModel: ObservableObject {
     private func showAlert(for state: GameState) {
         gameNotification = state.name
 
-        let title = state == .finished ? "\(activePlayer.name) has won!" : state.name
+        switch state {
+        case .finished, .draw, .waitingForPlayer:
+            let title = state == .finished ? "\(activePlayer.name) has won!" : state.name
+            alertItem = AlertItem(title: title, message: "Try rematching!")
+
+        case .quit:
+            let title = state.name
+            alertItem = AlertItem(title: title, message: "", buttonTitle: "OK")
+            isGameBoardDisabled = true
+        }
         
-        alertItem = AlertItem(title: title, message: "Try rematching!")
         showAlert = true
     }
     
@@ -354,6 +365,10 @@ final class GameViewModel: ObservableObject {
         if gameMode == .online {
             updateOnlineGame(process: .reset)
         }
+    }
+    
+    func quitTheGame() {
+        onlineRepository.quiteGame()
     }
 }
 

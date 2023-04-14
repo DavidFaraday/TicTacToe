@@ -24,6 +24,7 @@ struct GameView: View {
             Spacer()
             
             Button {
+                viewModel.quitTheGame()
                 dismiss()
             } label: {
                 Text("Exit")

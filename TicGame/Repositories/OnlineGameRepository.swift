@@ -92,8 +92,8 @@ final class OnlineGameRepository: ObservableObject {
         }
     }
     
-    private func quiteGame() {
-        //        guard game != nil else { return }
+    func quiteGame() {
+        guard game != nil else { return }
         firebaseRepository.deleteDocument(with: self.game.id, from: .Game)
     }
 }
