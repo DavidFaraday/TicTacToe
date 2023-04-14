@@ -6,9 +6,41 @@
 //
 
 import SwiftUI
+import Combine
+/*
+ Join game
+ if there is a game available, join, else create a game and listen for changes.
+ 
+ Created a game / waiting
+ block user move.
+ Show the notification of waiting
+ sync local game with the online
+ Scores are 0
+ 
+ Joined a game
+ put us as player 2
+ block our move
+ show notification of started game.
+ 
+ on each click, process the move locally,
+ 
+ if game is over,
+ update the score
+ update the winnersID
+ show notification
+ 
+ 
+ if its draw
+ update winners id to 0
+ show notification
+ 
+ 
+ sync with online
 
+ */
 
 final class GameViewModel: ObservableObject {
+    let onlineRepository = OnlineGameRepository()
     
     let columns: [GridItem] = [GridItem(.flexible()),
                                GridItem(.flexible()),
@@ -29,7 +61,7 @@ final class GameViewModel: ObservableObject {
     @Published private(set) var player2Name = ""
     @Published private(set) var gameNotification = ""
     @Published private(set) var alertItem: AlertItem?
-    @Published private(set) var game: Game?
+    @Published private(set) var onlineGame: Game?
     
     @Published private var gameMode: GameMode
     @Published private var players: [Player]
@@ -37,6 +69,8 @@ final class GameViewModel: ObservableObject {
     @Published var showAlert = false
     
     private let centerSquare = 4
+
+    private var cancellables: Set<AnyCancellable> = []
 
     init(with gameMode: GameMode) {
         
@@ -57,30 +91,147 @@ final class GameViewModel: ObservableObject {
     }
     
     private func startOnlineGame() {
-        
+
+        gameNotification = "Waiting for a player."
+        Task {
+            await onlineRepository.joinGame()
+        }
     }
     
     private func observerData() {
         $players
-            .map({ $0.first?.name ?? "" })
+            .map { $0.first?.name ?? "" }
             .assign(to: &$player1Name)
         
         $players
-            .map({ $0.last?.name ?? "" })
+            .map { $0.last?.name ?? "" }
             .assign(to: &$player2Name)
+        
+        onlineRepository.$game
+            .map { $0 }
+            .assign(to: &$onlineGame)
+
+        $onlineGame
+            .map { $0?.moves ?? Array(repeating: nil, count: 9) }
+            .assign(to: &$moves)
+        
+        $onlineGame
+            .map { $0?.player1Score ?? 0 }
+            .assign(to: &$player1Score)
+        
+        $onlineGame
+            .map { $0?.player2Score ?? 0 }
+            .assign(to: &$player2Score)
+        
+        $onlineGame
+            .sink { updatedGame in
+                self.syncOnlineWithLocal(onlineGame: updatedGame)
+            }
+            .store(in: &cancellables)
     }
     
-    private func showAlert(for state: GameState) {
-        var title = ""
-        
-        switch state {
-        case .finished:
-            title = "\(activePlayer.name) has won!"
-            gameNotification = state.name
-        case .draw:
-            title = state.name
-            gameNotification = state.name
+    private func syncOnlineWithLocal(onlineGame: Game?) {
+        guard let game = onlineGame else {
+            //if its nil exit game
+            print("exit the game")
+            return
         }
+
+        //set the score -> happenes automatically from combine
+        //set the moves -> happenes automatically from combine
+        
+        
+        //if its finished, show alert
+        if game.winningPlayerId == "0" {
+            self.showAlert(for: .draw)
+        } else if game.winningPlayerId != "" {
+            self.showAlert(for: .finished)
+        }
+
+        //set active player
+        activePlayer = (localPlayerId == game.player1Id) ? .player1 : .player2
+        print("Active player is \(activePlayer)")
+        
+        //set disable
+        isGameBoardDisabled = game.player2Id == "" ? true : localPlayerId != game.activePlayerId
+        print("GameBoard is disabled  \(isGameBoardDisabled)")
+
+        //set the notification
+        gameNotification = game.player2Id == "" ? "Waiting for player to join" : "It's \(activePlayer.name)'s move"
+
+//        if localPlayerId == game.player1Id {
+//            //we are P1
+//            if localPlayerId == game.activePlayerId {
+//                //its our turn
+//                self.activePlayer = .player1
+//                print("1 is active")
+//            }
+//        } else {
+//            //we are P2
+//            if localPlayerId == game.activePlayerId {
+//                //its our turn
+//                self.activePlayer = .player2
+//                print("2 is active")
+//            }
+//
+//        }
+    }
+    
+//    private func updateGameStatus() {
+//        if onlineGame?.player2Id == "" {
+//            gameNotification = "Waiting for player to join"
+//        } else {
+//            gameNotification = "It's \(activePlayer.name)'s move"
+//        }
+//
+//        if onlineGame?.player2Id == "" {
+//            isGameBoardDisabled = true
+//        } else {
+//            isGameBoardDisabled = localPlayerId != onlineGame?.activePlayerId
+//        }
+//    }
+
+    private func updateOnlineGame(process: GameProcess) {
+        guard var tempGame = onlineGame else { return }
+        
+        //disable board
+        isGameBoardDisabled = localPlayerId != tempGame.activePlayerId
+
+        //set active player
+        tempGame.activePlayerId = tempGame.activePlayerId == tempGame.player1Id ? tempGame.player2Id : tempGame.player1Id
+
+        //set the score
+        tempGame.player1Score = player1Score
+        tempGame.player2Score = player2Score
+
+        
+        switch process {
+        case .win:
+            tempGame.winningPlayerId = localPlayerId
+        case .draw:
+            tempGame.winningPlayerId = "0"
+            tempGame.activePlayerId = tempGame.player1Id
+        case .reset:
+            tempGame.winningPlayerId = ""
+            tempGame.activePlayerId = tempGame.player1Id
+        case .move:
+            break
+        }
+        
+        tempGame.moves = moves
+
+        let gameToSave = tempGame
+        
+        Task {
+            await onlineRepository.updateGame(gameToSave)
+        }
+    }
+    
+    
+    private func showAlert(for state: GameState) {
+        gameNotification = state.name
+
+        let title = state == .finished ? "\(activePlayer.name) has won!" : state.name
         
         alertItem = AlertItem(title: title, message: "Try rematching!")
         showAlert = true
@@ -94,11 +245,13 @@ final class GameViewModel: ObservableObject {
         if checkWinCondition(in: moves) {
             showAlert(for: .finished)
             increaseScore()
+            updateOnlineGame(process: .win)
             return
         }
         
         if checkForDraw(in: moves) {
             showAlert(for: .draw)
+            updateOnlineGame(process: .draw)
             return
         }
         
@@ -109,6 +262,7 @@ final class GameViewModel: ObservableObject {
             computerMove()
         }
         
+        updateOnlineGame(process: .move)
         gameNotification = "It's \(activePlayer.name)'s move"
     }
     
@@ -154,6 +308,7 @@ final class GameViewModel: ObservableObject {
     
     
     private func increaseScore() {
+
         if activePlayer == .player1 {
             player1Score += 1
         } else {
@@ -162,11 +317,11 @@ final class GameViewModel: ObservableObject {
     }
     
     private func checkWinCondition(in moves: [GameMove?]) -> Bool {
+        
         let playerMoves = moves.compactMap {$0}.filter { $0.player == activePlayer }
         let playerPositions = Set(playerMoves.map { $0.boardIndex } )
         
         for pattern in winPatterns where pattern.isSubset(of: playerPositions) { return true }
-        
         return false
     }
     
@@ -195,5 +350,13 @@ final class GameViewModel: ObservableObject {
         activePlayer = .player1
         gameNotification = "It's \(activePlayer.name)'s move"
         moves = Array(repeating: nil, count: 9)
+        
+        if gameMode == .online {
+            updateOnlineGame(process: .reset)
+        }
     }
+}
+
+enum GameProcess {
+    case win, draw, reset, move
 }

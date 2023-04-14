@@ -8,7 +8,7 @@
 import Foundation
 
 enum GameState {
-    case finished, draw
+    case finished, draw, waitingForPlayer
     
     var name: String {
         switch self {
@@ -16,6 +16,8 @@ enum GameState {
             return "The game has finished!"
         case .draw:
             return "It's a draw!"
+        case .waitingForPlayer:
+            return "Waiting for player"
         }
     }
 }
