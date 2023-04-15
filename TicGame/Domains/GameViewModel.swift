@@ -131,7 +131,7 @@ final class GameViewModel: ObservableObject {
     
     private func startOnlineGame() {
 
-        gameNotification = "Waiting for a player"
+        gameNotification = AppStrings.waitingForPlayer
         Task {
             await onlineRepository.joinGame()
         }
@@ -158,7 +158,7 @@ final class GameViewModel: ObservableObject {
         
         //set the notification for new game
         if game.player2Id == "" {
-            gameNotification = "Waiting for player to join"
+            gameNotification = AppStrings.waitingForPlayer
         }
     }
     
@@ -167,14 +167,14 @@ final class GameViewModel: ObservableObject {
         if localPlayerId == game.player1Id {
             if localPlayerId == game.activePlayerId {
                 self.activePlayer = .player1
-                gameNotification = "It's your move"
+                gameNotification = AppStrings.yourMove
             } else {
                 gameNotification = "It's \(activePlayer.name)'s move"
             }
         } else {
             if localPlayerId == game.activePlayerId {
                 self.activePlayer = .player2
-                gameNotification = "It's your move"
+                gameNotification = AppStrings.yourMove
             } else {
                 gameNotification = "It's \(activePlayer.name)'s move"
             }
@@ -223,7 +223,7 @@ final class GameViewModel: ObservableObject {
         switch state {
         case .finished, .draw, .waitingForPlayer:
             let title = state == .finished ? "\(activePlayer.name) has won!" : state.name
-            alertItem = AlertItem(title: title, message: "Try rematching!")
+            alertItem = AlertItem(title: title, message: AppStrings.tryRematch)
 
         case .quit:
             let title = state.name
@@ -266,7 +266,7 @@ final class GameViewModel: ObservableObject {
     
     private func computerMove() {
         
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [self] in
             processMove(for: getAIMovePosition(in: moves))
             isGameBoardDisabled = false
         }

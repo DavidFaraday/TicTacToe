@@ -21,7 +21,7 @@ struct HomeView: View {
                 .frame(width: 180, height: 180)
                 .foregroundColor(Color.accentColor)
             
-            Text("Tic Tac Toe")
+            Text(AppStrings.appName)
                 .font(.largeTitle)
                 .fontWeight(.semibold)
                 .foregroundColor(Color.accentColor)

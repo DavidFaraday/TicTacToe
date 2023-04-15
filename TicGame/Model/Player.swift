@@ -13,11 +13,11 @@ enum Player: Codable {
     var name: String {
         switch self {
         case .player1:
-            return "Player1"
+            return AppStrings.player1
         case .player2:
-            return "Player2"
+            return AppStrings.player2
         case .cpu:
-            return "Computer"
+            return AppStrings.computer
         }
     }
 }

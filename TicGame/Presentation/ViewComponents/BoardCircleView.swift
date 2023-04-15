@@ -12,7 +12,7 @@ struct BoardCircleView: View {
     
     var body: some View {
         Circle()
-            .foregroundColor(.blue.opacity(0.7))
+            .fill(Color.white)
             .frame(width: geometry.size.width / 3 - 15, height: geometry.size.width / 3 - 15)
     }
 }

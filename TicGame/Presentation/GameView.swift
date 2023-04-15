@@ -14,12 +14,15 @@ struct GameView: View {
     
     @ViewBuilder
     private func gameStatus() -> some View {
-        Text(viewModel.gameNotification)
-            .font(.title2)
-        if viewModel.showLoading {
-            ProgressView()
-                .progressViewStyle(CircularProgressViewStyle())
+        VStack {
+            Text(viewModel.gameNotification)
+                .font(.title2)
+            if viewModel.showLoading {
+                ProgressView()
+                    .progressViewStyle(CircularProgressViewStyle())
+            }
         }
+        .foregroundColor(.white)
     }
     
     @ViewBuilder
@@ -34,10 +37,10 @@ struct GameView: View {
                 Text("Exit")
                     .font(.title3)
                     .fontWeight(.semibold)
-                    .foregroundColor(.white)
+                    .foregroundColor(.red)
             }
             .buttonStyle(.borderedProminent)
-            .tint(.red)
+            .tint(.white)
         }
         .padding(.bottom, 20)
     }
@@ -49,6 +52,7 @@ struct GameView: View {
             Spacer()
             Text("\(viewModel.player2Name): \(viewModel.player2Score)")
         }
+        .foregroundColor(.white)
         .font(.title2)
         .fontWeight(.semibold)
     }
@@ -58,15 +62,13 @@ struct GameView: View {
         VStack {
             LazyVGrid(columns: viewModel.columns, spacing: 5) {
                 ForEach(0..<9) { index in
-                    
+
                     ZStack {
                         BoardCircleView(geometry: geometry)
                         BoardIndicatorView(imageName: viewModel.moves[index]? .indicator ?? "")
                     }
                     .onTapGesture {
-                        withAnimation(.easeInOut) {
-                            viewModel.processMove(for: index)
-                        }
+                        viewModel.processMove(for: index)
                     }
                 }
             }
@@ -86,10 +88,11 @@ struct GameView: View {
                 gameStatus()
                 Spacer()
                 gameBoard(geometry: geometry)
+                    .shadow(radius: 8)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .padding(.horizontal, 16)
-            .background(.green.gradient)
+            .background(Color.indigo)
         }
     }
     

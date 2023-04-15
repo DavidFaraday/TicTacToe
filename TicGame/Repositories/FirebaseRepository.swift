@@ -26,7 +26,7 @@ final class FirebaseRepository: FirebaseRepositoryProtocol {
     
     func getDocuments<T: Codable>(from collection: FCollectionReference, for playerId: String) async throws -> [T]? {
 
-        let snapshot = try await FirebaseReference(collection).whereField("player2Id", isEqualTo: "").whereField("player1Id", isNotEqualTo: playerId).getDocuments()
+        let snapshot = try await FirebaseReference(collection).whereField(Constants.player2Id, isEqualTo: "").whereField(Constants.player1Id, isNotEqualTo: playerId).getDocuments()
 
         return snapshot.documents.compactMap { queryDocumentSnapshot -> T? in
             return try? queryDocumentSnapshot.data(as: T.self)
