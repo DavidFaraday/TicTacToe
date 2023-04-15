@@ -12,7 +12,6 @@ enum FCollectionReference: String {
     case Game
 }
 
-
 func FirebaseReference(_ reference: FCollectionReference) -> CollectionReference {
     Firestore.firestore().collection(reference.rawValue)
 }

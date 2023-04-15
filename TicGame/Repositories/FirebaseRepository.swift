@@ -61,14 +61,13 @@ final class FirebaseRepository: FirebaseRepositoryProtocol {
     }
     
 
-    
     func deleteDocument(with id: String, from collection: FCollectionReference) {
         FirebaseReference(collection).document(id).delete()
     }
     
     func saveData<T: EncodableIdentifiable>(data: T, to collection: FCollectionReference) throws {
         let id = data.id as? String ?? UUID().uuidString
-        print("data to save is \(data)")
+
         do {
             try FirebaseReference(collection).document(id).setData(from: data.self)
         } catch {

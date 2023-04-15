@@ -62,6 +62,7 @@ final class GameViewModel: ObservableObject {
     @Published private(set) var gameNotification = ""
     @Published private(set) var alertItem: AlertItem?
     @Published private(set) var onlineGame: Game?
+    @Published private(set) var showLoading = false
     
     @Published private var gameMode: GameMode
     @Published private var players: [Player]
@@ -89,15 +90,7 @@ final class GameViewModel: ObservableObject {
         gameNotification = "It's \(activePlayer.name)'s move"
         observerData()
     }
-    
-    private func startOnlineGame() {
-
-        gameNotification = "Waiting for a player."
-        Task {
-            await onlineRepository.joinGame()
-        }
-    }
-    
+        
     private func observerData() {
         $players
             .map { $0.first?.name ?? "" }
@@ -125,10 +118,23 @@ final class GameViewModel: ObservableObject {
         
         $onlineGame
             .drop(while: { $0 == nil } )
+            .map { $0?.player2Id == "" }
+            .assign(to: &$showLoading)
+        
+        $onlineGame
+            .drop(while: { $0 == nil } )
             .sink { updatedGame in
                 self.syncOnlineWithLocal(onlineGame: updatedGame)
             }
             .store(in: &cancellables)
+    }
+    
+    private func startOnlineGame() {
+
+        gameNotification = "Waiting for a player"
+        Task {
+            await onlineRepository.joinGame()
+        }
     }
     
     private func syncOnlineWithLocal(onlineGame: Game?) {
@@ -136,10 +142,6 @@ final class GameViewModel: ObservableObject {
             showAlert(for: .quit)
             return
         }
-
-        //set the score -> happenes automatically from combine
-        //set the moves -> happenes automatically from combine
-        
         
         //if its finished, show alert
         if game.winningPlayerId == "0" {
@@ -148,52 +150,37 @@ final class GameViewModel: ObservableObject {
             self.showAlert(for: .finished)
         }
 
-        //set active player
-//        activePlayer = (localPlayerId == game.player1Id) ? .player1 : .player2
-        
         //set disable
         isGameBoardDisabled = game.player2Id == "" ? true : localPlayerId != game.activePlayerId
-        print("GameBoard is disabled  \(isGameBoardDisabled)")
-
-
-        if localPlayerId == game.player1Id {
-            //we are P1
-            if localPlayerId == game.activePlayerId {
-                //its our turn
-                self.activePlayer = .player1
-//                print("1 is active")
-            }
-        } else {
-            //we are P2
-            if localPlayerId == game.activePlayerId {
-                //its our turn
-                self.activePlayer = .player2
-//                print("2 is active")
-            }
-
-        }
+                
+        //set active player & notification
+        setActivePlayerAndNotification(from: game)
         
-        print("Active player is \(activePlayer)")
-
-        //set the notification
-        gameNotification = game.player2Id == "" ? "Waiting for player to join" : "It's \(activePlayer.name)'s move"
-
+        //set the notification for new game
+        if game.player2Id == "" {
+            gameNotification = "Waiting for player to join"
+        }
     }
     
-//    private func updateGameStatus() {
-//        if onlineGame?.player2Id == "" {
-//            gameNotification = "Waiting for player to join"
-//        } else {
-//            gameNotification = "It's \(activePlayer.name)'s move"
-//        }
-//
-//        if onlineGame?.player2Id == "" {
-//            isGameBoardDisabled = true
-//        } else {
-//            isGameBoardDisabled = localPlayerId != onlineGame?.activePlayerId
-//        }
-//    }
-
+    
+    private func setActivePlayerAndNotification(from game: Game) {
+        if localPlayerId == game.player1Id {
+            if localPlayerId == game.activePlayerId {
+                self.activePlayer = .player1
+                gameNotification = "It's your move"
+            } else {
+                gameNotification = "It's \(activePlayer.name)'s move"
+            }
+        } else {
+            if localPlayerId == game.activePlayerId {
+                self.activePlayer = .player2
+                gameNotification = "It's your move"
+            } else {
+                gameNotification = "It's \(activePlayer.name)'s move"
+            }
+        }
+    }
+    
     private func updateOnlineGame(process: GameProcess) {
         guard var tempGame = onlineGame else { return }
         
@@ -206,7 +193,6 @@ final class GameViewModel: ObservableObject {
         //set the score
         tempGame.player1Score = player1Score
         tempGame.player2Score = player2Score
-
         
         switch process {
         case .win:
@@ -247,6 +233,7 @@ final class GameViewModel: ObservableObject {
         
         showAlert = true
     }
+    
     
     func processMove(for position: Int) {
         if isSquareOccupied(in: moves, forIndex: position) { return }
@@ -359,11 +346,12 @@ final class GameViewModel: ObservableObject {
     
     func resetGame() {
         activePlayer = .player1
-        gameNotification = "It's \(activePlayer.name)'s move"
         moves = Array(repeating: nil, count: 9)
         
         if gameMode == .online {
             updateOnlineGame(process: .reset)
+        } else {
+            gameNotification = "It's \(activePlayer.name)'s move"
         }
     }
     
@@ -372,6 +360,3 @@ final class GameViewModel: ObservableObject {
     }
 }
 
-enum GameProcess {
-    case win, draw, reset, move
-}

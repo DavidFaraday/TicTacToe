@@ -16,6 +16,10 @@ struct GameView: View {
     private func gameStatus() -> some View {
         Text(viewModel.gameNotification)
             .font(.title2)
+        if viewModel.showLoading {
+            ProgressView()
+                .progressViewStyle(CircularProgressViewStyle())
+        }
     }
     
     @ViewBuilder

@@ -84,7 +84,6 @@ final class OnlineGameRepository: ObservableObject {
     }
     
     func updateGame(_ game: Game) async {
-        print("will update \(game)")
         do {
             try firebaseRepository.saveData(data: game, to: .Game)
         } catch {
