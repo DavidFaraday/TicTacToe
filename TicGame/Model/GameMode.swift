@@ -26,7 +26,7 @@ enum GameMode: CaseIterable, Identifiable {
     var color: Color {
         switch self {
         case .vsHuman:
-            return Color.blue
+            return Color.indigo
         case .vsCPU:
             return Color.red
         case .online:

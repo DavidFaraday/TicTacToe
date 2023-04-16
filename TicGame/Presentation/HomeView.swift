@@ -19,13 +19,12 @@ struct HomeView: View {
                 .renderingMode(.original)
                 .resizable()
                 .frame(width: 180, height: 180)
-                .foregroundColor(Color.accentColor)
             
             Text(AppStrings.appName)
                 .font(.largeTitle)
                 .fontWeight(.semibold)
-                .foregroundColor(Color.accentColor)
         }
+        .foregroundColor(.indigo)
         .padding(.top, 50)
     }
     
